@@ -1,8 +1,10 @@
-#include<stdlib.h>
-#include<stdbool.h>
-#include<stdio.h>
-#include<string.h>
-#include<math.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include <stdarg.h>
+
 /*
  * For original project details of this project go to
 http://www.codedrome.com/svg-library-in-c/
@@ -25,24 +27,42 @@ typedef struct svg{
 // --------------------------------------------------------
 // FUNCTION PROTOTYPES
 // --------------------------------------------------------
+//ok I just realized bruh did an obnoxious thing, and made all the shape functions take arguments in different patterns. 
+//function( psvg, x,y, height, width, radius, fill, stroke, strokewidth )
+//Ill fix that later, RN gonna make animation work. 
+
+/*I too did an anoying thing and wrote animateRotate using the format of the former args patterns. 
+ * Using stdarg.h, functions require specifying the number of args for a function, these are as follows
+ * 
+ * svg_ellipse: 8
+ * svg_polygon 8
+ * svg_text 8
+ * svg_line 7
+ * svg_rectangle 10
+ * 
+ * after which, args are passed to the animateRotate function
+ * 
+ * Example animateRotate call:
+ *   svg_animateRotate( 8, svg_polygon, psvg, 100.0, 100.0, 50.0, 5, "blue", "green", 7, durration);
+ * */
 svg* svg_create(int width, int height);
 void svg_finalize(svg* psvg);
 void svg_print(svg* psvg);
 void svg_save(svg* psvg, char* filepath);
 void svg_free(svg* psvg);
-
+void svg_fill(svg* psvg, char* fill);
 void svg_circle(svg* psvg, char* stroke, int strokewidth, char* fill, int r, int cx, int cy);
 void svg_line(svg* psvg, char* stroke, int strokewidth, int x1, int y1, int x2, int y2);
 void svg_rectangle(svg* psvg, int width, int height, int x, int y, char* fill, char* stroke, int strokewidth, int radiusx, int radiusy);
-void svg_fill(svg* psvg, char* fill);
 void svg_text(svg* psvg, int x, int y, char* fontfamily, int fontsize, char* fill, char* stroke, char* text);
 void svg_ellipse(svg* psvg, int cx, int cy, int rx, int ry, char* fill, char* stroke, int strokewidth);
-//void svg_polyline(svg* psvg, int a[], char* stroke, int strokewidth); //comeback to this it was for a kinnect
 void svg_polygon(svg* psvg, double cx, double cy, float radius, int nsides, char* fill, char* stroke, int strokewidth );
-
+//void svg_polyline(svg* psvg, int a[], char* stroke, int strokewidth); //comeback to this it was for a kinnect
 //void svg_starpolygon(svg* psvg, double cx, double cy, float radius, int npoints, char* fill, char* stroke, int strokewidth );
 //void svg_gearpolygon(svg* psvg, double cx, double cy, float radius, int teeth, char* fill, char* stroke, int strokewidth );
 //void svg_diamondpolygon(svg* psvg, double cx, double cy, float radius, char* fill, char* stroke, int strokewidth );
+void svg_animateRotate(int num_args, ...); //take shape functions
+void svg_animateColor(int num_args, ...);
 
 // --------------------------------------------------------
 // STATIC FUNCTION appendstringtosvg
@@ -161,13 +181,13 @@ void svg_line(svg* psvg, char* stroke, int strokewidth, int x1, int y1, int x2, 
     appendstringtosvg(psvg, stroke);
     appendstringtosvg(psvg, "' stroke-width='");
     appendnumbertosvg(psvg, strokewidth);
-    appendstringtosvg(psvg, "px' y2='");
+    appendstringtosvg(psvg, "px' x1='");
     appendnumbertosvg(psvg, y2);
-    appendstringtosvg(psvg, "' x2='");
-    appendnumbertosvg(psvg, x2);
     appendstringtosvg(psvg, "' y1='");
+    appendnumbertosvg(psvg, x2);
+    appendstringtosvg(psvg, "' x2='");
     appendnumbertosvg(psvg, y1);
-    appendstringtosvg(psvg, "' x1='");
+    appendstringtosvg(psvg, "' y2='");
     appendnumbertosvg(psvg, x1);
     appendstringtosvg(psvg, "' />\n");
 }
@@ -307,3 +327,176 @@ float xi, yi=0.0;
      appendstringtosvg(psvg, "' />\n");
 	}
 
+//----------------------------------------------------------------
+// FUNCTION svg_animate :: transform methods
+//----------------------------------------------------------------
+
+/*
+  * In SVG's animateTransform element, the type attribute specifies the type of transformation to be animated. The type attribute can take the following values:
+    translate: Animates a translation transformation, which moves an element along the x and y axes.
+    scale: Animates a scaling transformation, which changes the size of an element along the x and y axes.
+    rotate: Animates a rotation transformation, which rotates an element around a specified point.
+    skewX: Animates a skew transformation along the x-axis, which tilts an element horizontally.
+    skewY: Animates a skew transformation along the y-axis, which tilts an element vertically.
+
+ * */
+ //----------------------------------------------------------------
+// FUNCTION svg_animateRotate
+//----------------------------------------------------------------
+// Operator function that accepts variable arguments
+void svg_animateRotate(int num_args, ...) {
+    va_list args;
+    va_start(args, num_args);
+
+    for (int i = 0; i < num_args; i++) {
+        // Get the function pointer from the variable arguments
+        void (*func)(svg*, ...);
+        func = va_arg(args, void (*)(svg*, ...));
+
+        // Call the function with the remaining arguments
+        if (func == svg_ellipse) {
+            svg* psvg = va_arg(args, svg*);
+            int cx = va_arg(args, int);
+            int cy = va_arg(args, int);
+            int rx = va_arg(args, int);
+            int ry = va_arg(args, int);
+            char* fill = va_arg(args, char*);
+            char* stroke = va_arg(args, char*);
+            int strokewidth = va_arg(args, int);
+            int dur = va_arg(args,int);               //maybe make that a float or double later
+            appendstringtosvg(psvg, " \n<g>\n");            
+            svg_ellipse(psvg, cx, cy, rx, ry, fill, stroke, strokewidth); //write the shape
+            appendstringtosvg(psvg, " \n <animateTransform \n  attributeName=\"transform\" \n  attributeType=\"XML\" \n type=\"rotate\"\n");
+            appendstringtosvg(psvg, "from=\"0 "); //cx,cy atleast in the polygon function are center
+            appendnumbertosvg(psvg, cx);
+            appendstringtosvg(psvg, " ");
+            appendnumbertosvg(psvg, cy);
+            appendstringtosvg(psvg, "\"\n");
+
+            appendstringtosvg(psvg, "to=\"360 "); //theta space x space y
+            appendnumbertosvg(psvg, cx);
+            appendstringtosvg(psvg, " ");
+            appendnumbertosvg(psvg, cy);
+            appendstringtosvg(psvg, "\"\ndur =\""); 
+            appendnumbertosvg(psvg, dur);
+            appendstringtosvg(psvg, "s\"\n"); 
+            appendstringtosvg(psvg, "repeatCount=\"indefinite\" />\n</g>\n"); 
+        } else if (func == svg_polygon) { //8 args
+            svg* psvg = va_arg(args, svg*);
+            double cx = va_arg(args, double);
+            double cy = va_arg(args, double);
+            float radius = va_arg(args, double); // Note: float is promoted to double in va_arg
+            int nsides = va_arg(args, int);
+            char* fill = va_arg(args, char*);
+            char* stroke = va_arg(args, char*);
+            int strokewidth = va_arg(args, int);
+            int dur = va_arg(args,int);               //maybe make that a float or double later
+            appendstringtosvg(psvg, " \n<g>\n");
+            svg_polygon(psvg, cx, cy, radius, nsides, fill, stroke, strokewidth); 
+            appendstringtosvg(psvg, " \n <animateTransform \n  attributeName=\"transform\" \n  attributeType=\"XML\" \n type=\"rotate\"\n");
+            appendstringtosvg(psvg, "from=\"0 "); //cx,cy atleast in the polygon function are center
+            appendnumbertosvg(psvg, cx);
+            appendstringtosvg(psvg, " ");
+            appendnumbertosvg(psvg, cy);
+            appendstringtosvg(psvg, "\"\n");
+
+            appendstringtosvg(psvg, "to=\"360 "); //theta space x space y
+            appendnumbertosvg(psvg, cx);
+            appendstringtosvg(psvg, " ");
+            appendnumbertosvg(psvg, cy);
+            appendstringtosvg(psvg, "\"\ndur =\"");
+            appendnumbertosvg(psvg, dur);
+            appendstringtosvg(psvg, "s\"\n"); 
+            appendstringtosvg(psvg, "repeatCount=\"indefinite\" />\n</g>\n"); 
+        }  else if (func == svg_text) {
+			//This function doesn some BS related to groups. 
+			//void svg_text(svg* psvg, int x, int y, char* fontfamily, int fontsize, char* fill, char* stroke, char* text);
+            svg* psvg = va_arg(args, svg*);
+            int x = va_arg(args, int);
+            int y = va_arg(args, int);
+            char* fontfamily = va_arg(args, char*); // use system fonts
+            int fontsize = va_arg(args, int);
+            char* fill = va_arg(args, char*);
+            char* stroke = va_arg(args, char*);
+            char* text = va_arg(args, char*);
+            int dur = va_arg(args,int);               //durration of animation
+            appendstringtosvg(psvg, " \n<g>\n");
+            svg_text(psvg, x, y, fontfamily, fontsize, fill, stroke, text);
+            appendstringtosvg(psvg, " \n<animateTransform \n  attributeName=\"transform\" \n  attributeType=\"XML\" \n type=\"rotate\"\n");
+            appendstringtosvg(psvg, "from=\"0 "); //cx,cy atleast in the polygon function are center 
+            appendnumbertosvg(psvg, x);                 //maybe set x, y based on text length. 
+            appendstringtosvg(psvg, " ");
+            appendnumbertosvg(psvg, y);
+            appendstringtosvg(psvg, "\"\n");
+
+            appendstringtosvg(psvg, "to=\"360 "); //theta space x space y
+            appendnumbertosvg(psvg, x);
+            appendstringtosvg(psvg, " ");
+            appendnumbertosvg(psvg, y);
+            appendstringtosvg(psvg, "\"\ndur =\"");
+            appendnumbertosvg(psvg, dur);
+            appendstringtosvg(psvg, "s\"\n"); 
+            appendstringtosvg(psvg, "repeatCount=\"indefinite\" />\n</g>\n"); 
+			}  else if (func == svg_rectangle) {
+			// svg_rectangle(psvg,  width,  height, x,  y,  fill,  stroke,  strokewidth,  radiusx,  radiusy); //all ints 10 args
+            svg* psvg = va_arg(args, svg*);
+            int width = va_arg(args, int);
+            int height = va_arg(args, int);
+            int x = va_arg(args, int);
+            int y = va_arg(args, int);
+            char* fill = va_arg(args, char*);
+            char* stroke = va_arg(args, char*);
+            int strokewidth = va_arg(args, int);
+            int radiusx = va_arg(args, int);
+            int radiusy = va_arg(args, int);
+            int dur = va_arg(args,int);               //durration of animation
+            appendstringtosvg(psvg, " \n<g>");
+            svg_rectangle(psvg,  width,  height, x,  y,  fill,  stroke,  strokewidth,  radiusx,  radiusy); 
+            appendstringtosvg(psvg, " \n<animateTransform \n  attributeName=\"transform\" \n  attributeType=\"XML\" \n type=\"rotate\"\n");
+            appendstringtosvg(psvg, "from=\"0 "); //cx,cy atleast in the polygon function are center 
+            appendnumbertosvg(psvg, x);                 //maybe set x, y based on text length. 
+            appendstringtosvg(psvg, " ");
+            appendnumbertosvg(psvg, y);
+            appendstringtosvg(psvg, "\"\n");
+
+            appendstringtosvg(psvg, "to=\"360 "); //theta space x space y
+            appendnumbertosvg(psvg, x);
+            appendstringtosvg(psvg, " ");
+            appendnumbertosvg(psvg, y);
+            appendstringtosvg(psvg, "\"\ndur =\"");
+            appendnumbertosvg(psvg, dur);
+            appendstringtosvg(psvg, "s\"\n"); 
+            appendstringtosvg(psvg, "repeatCount=\"indefinite\" />\n</g>\n"); 
+    } else if (func == svg_line) {
+		//void svg_line(svg* psvg, char* stroke, int strokewidth, int x1, int y1, int x2, int y2);
+		// svg_line(psvg, stroke, strokewidth,  x1,  y1, x2,  y2);
+		    svg* psvg = va_arg(args, svg*);
+		    char* stroke = va_arg(args, char*);
+		    int strokewidth = va_arg(args, int);
+            int x1 = va_arg(args, int);
+            int y1 = va_arg(args, int);
+            int x2 = va_arg(args, int);
+            int y2 = va_arg(args, int);
+
+            int dur = va_arg(args,int);               //durration of animation
+            appendstringtosvg(psvg, " \n<g>");
+            svg_line(psvg, stroke, strokewidth,  x1,  y1, x2,  y2);
+            appendstringtosvg(psvg, " \n<animateTransform \n  attributeName=\"transform\" \n  attributeType=\"XML\" \n type=\"rotate\"\n");
+            appendstringtosvg(psvg, "from=\"0 "); //cx,cy atleast in the polygon function are center 
+            appendnumbertosvg(psvg, x1);                 //maybe set x, y based on text length. 
+            appendstringtosvg(psvg, " ");
+            appendnumbertosvg(psvg, y1);
+            appendstringtosvg(psvg, "\"\n");
+
+            appendstringtosvg(psvg, "to=\"360 "); //theta space x space y
+            appendnumbertosvg(psvg, x2);
+            appendstringtosvg(psvg, " ");
+            appendnumbertosvg(psvg, y2);
+            appendstringtosvg(psvg, "\"\ndur =\"");
+            appendnumbertosvg(psvg, dur);
+            appendstringtosvg(psvg, "s\"\n"); 
+            appendstringtosvg(psvg, "repeatCount=\"indefinite\" />\n</g>\n"); 
+		}
+}//end for loop
+    va_end(args);
+}

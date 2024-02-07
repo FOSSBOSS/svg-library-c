@@ -7,5 +7,6 @@ To compile:
 $gcc -g -Wall -lm main.c -o main
 
 added features: Regular polygons with sides > 3. 
+                rotate shapes with animateRotate()
 
 Future Features: polyline, gears, star polygons, diamonds. and other features of the svg standard. 

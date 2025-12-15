@@ -21,4 +21,13 @@ Premise:
 
 where opts may include things like, color (stroke, fill), faces, and points.
 
+Guess while Im here trying to be more specific,
+  I think the most mathmaticaly pertnent method is to approach all
+  shape objects, as polar equations. Some shapes are like this by default, like
+  circle, and elipse, but others are not.
+
+  So here Im asserting that all shapes are initialized from a center point.
+  I implemented some of this with the polygon functions. Furthermore, all shapes will be
+  considered regular polygons, barring mathmatical errors on my part.
+
 </pre>
